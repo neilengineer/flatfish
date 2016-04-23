@@ -19,5 +19,4 @@ class GetwebdataItem(scrapy.Item):
     title_status = scrapy.Field()
     date = scrapy.Field()
     url = scrapy.Field()
-    distance = scrapy.Field()
-    model = scrapy.Field()
+    place = scrapy.Field()
