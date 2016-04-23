@@ -4,9 +4,9 @@ from getwebdata.items import GetwebdataItem
 import re
 from datetime import datetime
 
-TOP_SELLING_BRANDS = ["ford","chevrolet","chevy","ram","toyota","honda","nissan","hyundai","jeep","gmc", \
-    "subaru","kia","bmw","lexus","infiniti","volkswagen","dodge","chrysler","audi","mazda","mini"]
-DATE=''
+CAR_BRANDS = ["ford","chevrolet","chevy","ram","toyota","honda","nissan","hyundai","jeep","gmc", \
+ "subaru","kia","bmw","lexus","infiniti","volkswagen","vw","dodge","chrysler","audi","mercedes-benz","benz",\
+"mazda","mini","buick","fiat","cadillac","jaguar","acura","volvo","mitsubishi"]
 PRICE_MIN = 2000
 PRICE_MAX = 20000
 YEAR_MIN = '1970'
@@ -33,6 +33,7 @@ class craigspider(BaseSpider):
 
     def parse(self, response):
         links = response.xpath("//p[@class='row']/span[@class='txt']/span[@class='pl']/a/@href").extract()
+        print "----Total number of URLs = %d"%len(links)
         for href in links:
             url = response.urljoin(href)
             print "----Processing URL = %s"%url
@@ -62,7 +63,7 @@ class craigspider(BaseSpider):
             #brand
             brand = ''
             brand_str = entry_title.lower().split()
-            for b in TOP_SELLING_BRANDS:
+            for b in CAR_BRANDS:
                 if b in brand_str:
                     brand = b
                     break
@@ -95,7 +96,7 @@ class craigspider(BaseSpider):
             #ignore timezone str for now
             tmp_date = re.sub("-\d{4}","",tmp_date)
             date_obj = datetime.strptime(tmp_date, '%Y-%m-%d %H:%M:%S')
-            if date_obj.date() == date_today:
+            if date_obj.date() == self.date_today:
                 date = tmp_date
             else:
                 print "----Date %s not within range"%tmp_date

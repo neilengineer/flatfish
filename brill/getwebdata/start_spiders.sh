@@ -1,4 +1,6 @@
 #!/bin/sh
 
-scrapy crawl craig
+OUTPUT="$1"
+
+scrapy crawl craig -o $OUTPUT 
 
