@@ -4,9 +4,7 @@
 #
 # See documentation in:
 # http://doc.scrapy.org/en/latest/topics/items.html
-
 import scrapy
-
 
 class GetwebdataItem(scrapy.Item):
     brand = scrapy.Field()
@@ -20,3 +18,7 @@ class GetwebdataItem(scrapy.Item):
     date = scrapy.Field()
     url = scrapy.Field()
     place = scrapy.Field()
+
+class Getwebdata_Time(scrapy.Item):
+    last_update_time = scrapy.Field()
+
