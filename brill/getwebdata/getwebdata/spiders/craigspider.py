@@ -9,8 +9,8 @@ import re
 
 CAR_BRANDS = ["ford","chevrolet","chevy","ram","toyota","honda","nissan","hyundai","jeep","gmc", \
  "subaru","kia","bmw","lexus","infiniti","volkswagen","vw","dodge","chrysler","audi","mercedes-benz","benz",\
-"mazda","mini","buick","fiat","cadillac","jaguar","acura","volvo","mitsubishi","scion","mercedes","mb","lincoln",
-]
+"mazda","mini","buick","fiat","cadillac","jaguar","acura","volvo","mitsubishi","scion","mercedes","mb", \
+"lincoln","saturn"]
 PRICE_MIN = 2000
 PRICE_MAX = 15000
 YEAR_MIN = '2000'
@@ -37,8 +37,8 @@ class craigspider(CrawlSpider):
     ]
     collection_name = 'craig'
     last_update_url = ''
-#    page_num = 0
-#    total_page_num = 0
+    page_num = 0
+    total_page_num = 0
     total_processed_link_num = 0
     valid_link_num = 0
 
@@ -65,49 +65,46 @@ class craigspider(CrawlSpider):
         return self.parse_page(response)
 
     def parse_page(self, response):
-#        self.page_num = self.page_num + 1
-#        if self.page_num == 1:
-#            self.total_page_num = 1 + int(response.xpath("//span[@class='totalcount']/text()").extract()[0])/100
-#        if self.page_num == self.total_page_num:
-#            return
+        self.page_num = self.page_num + 1
+        if self.page_num == 1:
+            self.total_page_num = 1 + int(response.xpath("//span[@class='totalcount']/text()").extract()[0])/100
+        if self.page_num == self.total_page_num:
+            print "----This is the last page, stop following"
+            self._follow_links = False
 
         links = response.xpath("//p[@class='row']/span[@class='txt']/span[@class='pl']/a/@href").extract()
 #        print "----Total number of URLs = %d on this page"%len(links)
-        print "----Processing page with URL = %s"%response.url
+        print "--Opening page%d URL = %s"%(self.page_num, response.url)
         if self.debug != '1':
             if self.last_update_url == '':
                 self.last_update_url = links[-1]
                 print "----Set the first threshold url %s"%self.last_update_url
         for i,href in enumerate(links):
             if self.debug != '1':
-                if href == self.last_update_url or i == (len(links)-1):
-                    if i == 0:
-                        print "----No new entries found, return..."
-                        self._follow_links = False
-                        return
-                    #save the last URL before current one
-                    updateurl = GetwebdataCollinfo()
-                    updateurl['coll_name'] = self.collection_name
-                    if href == self.last_update_url:
-                        print "----Found last_update_url in middle %s at i=%s"%(href,i)
-                        print "----Save the previous one %s"%links[i-1]
-                        updateurl['last_update_url'] = links[i-1]
-                    elif i == (len(links)-1):
-                        print "----last_update_url not found in the page, save the newest url"
+                if self.page_num == 1:
+                    #save the newest link on the 1st page only! When match saved one or end of the page
+                    if href == self.last_update_url or i == (len(links)-1):
+                        if i < (len(links)-1):
+                            print "----No new entries in next pages, stop following next pages"
+                            self._follow_links = False
+                        #save the last URL before current one
+                        updateurl = GetwebdataCollinfo()
+                        updateurl['coll_name'] = self.collection_name
                         updateurl['last_update_url'] = links[0]
-                    self.last_update_url = updateurl['last_update_url']
-                    self.db[self.collection_name].update(
-                                            {'coll_name': self.collection_name},
-                                            {
-                                                '$set': dict(updateurl)
-                                            },
-                                            upsert=True,
-                                            multi=True,
-                                            )
-                    print "----Saving last_update_url to new URL %s"%(updateurl['last_update_url'])
-                    return
+                        self.db[self.collection_name].update(
+                                                {'coll_name': self.collection_name},
+                                                {
+                                                    '$set': dict(updateurl)
+                                                },
+                                                upsert=True,
+                                                multi=True,
+                                                )
+                        self.last_update_url = updateurl['last_update_url']
+                        print "----Saving last_update_url to new URL %s"%(updateurl['last_update_url'])
+                        return
             url = response.urljoin(href)
             yield scrapy.Request(url, callback=self.parse_link_detail)
+        print "--For this page: total_processed_link_num=%d, valid_link_num=%d"%(self.total_processed_link_num,self.valid_link_num)
 
 
     def parse_link_detail(self, response):
@@ -179,7 +176,7 @@ class craigspider(CrawlSpider):
             item['date'] = date
             item['url'] = response.url
             items.append(item)
-            print "----Found valid entry at link %s on the page"%item['url']
+            print "----Found valid entry at link %s"%item['url']
             self.valid_link_num = self.valid_link_num + 1
         return items
 
