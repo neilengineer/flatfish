@@ -36,7 +36,6 @@ class GetwebdataPipeline(object):
         if spider.debug != '1':
             updatetime = GetwebdataCollinfo()
             updatetime['last_update_time'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            print "----Saving last update time to = %s"%updatetime
             self.db[self.collection_name].update(
                                     {'coll_name': self.collection_name},
                                     {
