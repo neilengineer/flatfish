@@ -8,18 +8,21 @@ import re
 
 CAR_BRANDS = ["ford","chevrolet","chevy","ram","toyota","honda","nissan","hyundai","jeep","gmc", \
  "subaru","kia","bmw","lexus","infiniti","volkswagen","vw","dodge","chrysler","audi","mercedes-benz","benz",\
-"mazda","mini","buick","fiat","cadillac","jaguar","acura","volvo","mitsubishi","scion"]
+"mazda","mini","buick","fiat","cadillac","jaguar","acura","volvo","mitsubishi","scion","mercedes","mb","lincoln",
+]
 PRICE_MIN = 2000
-PRICE_MAX = 20000
-YEAR_MIN = '1970'
+PRICE_MAX = 15000
+YEAR_MIN = '2000'
 MILEAGE_MIN = 5000
+MILEAGE_MAX = 150000
 
 #NOTE:
 #only supports SF bay area
 #only supports craigslist
 #date: today and yesterday
-#price range 2000-20000
-#year is from 1970
+#price range 2000-15000
+#mileage range 5000-150000
+#year is from 2000
 #entries without mileage or without price will be skipped
 #TODO:
 #filter out spam info : if no year number in title skip
@@ -34,41 +37,53 @@ class craigspider(BaseSpider):
     collection_name = 'craig'
     last_update_url = ''
 
-    def __init__(self, category=None, *args, **kwargs):
+    def __init__(self, debug='', *args, **kwargs):
+        self.debug = debug
         super(craigspider, self).__init__(*args, **kwargs)
-        self.client = pymongo.MongoClient(my_mongo_uri)
-        self.db = self.client[my_database]
-        cursor = self.db[self.collection_name].find({'coll_name':self.collection_name})
-        if cursor != None:
-            for document in cursor:
-                self.last_update_url = document['last_update_url']
-                print "----Got last update url = %s"%self.last_update_url
+        if self.debug != '1':
+            self.client = pymongo.MongoClient(my_mongo_uri)
+            self.db = self.client[my_database]
+            cursor = self.db[self.collection_name].find({'coll_name':self.collection_name})
+            if cursor != None:
+                for document in cursor:
+                    self.last_update_url = document['last_update_url']
+                    print "----Got last update url = %s"%self.last_update_url
+        else:
+            print "----Dry run for debugging"
 
     def parse(self, response):
         links = response.xpath("//p[@class='row']/span[@class='txt']/span[@class='pl']/a/@href").extract()
         print "----Total number of URLs = %d on this page"%len(links)
-        if self.last_update_url == '':
-            self.last_update_url = links[-1]
-            print "----Set the first threshold url %s"%self.last_update_url
+        if self.debug != '1':
+            if self.last_update_url == '':
+                self.last_update_url = links[-1]
+                print "----Set the first threshold url %s"%self.last_update_url
         for i,href in enumerate(links):
-            if href == self.last_update_url:
-                if i == 0:
-                    print "----No new entries found, return..."
+            if self.debug != '1':
+                if href == self.last_update_url or i == (len(links)-1):
+                    if i == 0:
+                        print "----No new entries found, return..."
+                        return
+                    #save the last URL before current one
+                    updateurl = GetwebdataCollinfo()
+                    updateurl['coll_name'] = self.collection_name
+                    if href == self.last_update_url:
+                        print "----Found last_update_url in middle %s at i=%s"%(href,i)
+                        print "----Save the previous one %s"%links[i-1]
+                        updateurl['last_update_url'] = links[i-1]
+                    elif i == (len(links)-1):
+                        print "----last_update_url not found in the page, save the last url"
+                        updateurl['last_update_url'] = links[-1]
+                    self.db[self.collection_name].update(
+                                            {'coll_name': self.collection_name},
+                                            {
+                                                '$set': dict(updateurl)
+                                            },
+                                            upsert=True,
+                                            multi=True,
+                                            )
+                    print "----Saving last_update_url to new URL %s"%(updateurl['last_update_url'])
                     return
-                #save the last URL before current one
-                updateurl = GetwebdataCollinfo()
-                updateurl['coll_name'] = self.collection_name
-                updateurl['last_update_url'] = links[i-1]
-                self.db[self.collection_name].update(
-                                        {'coll_name': self.collection_name},
-                                        {
-                                            '$set': dict(updateurl)
-                                        },
-                                        upsert=True,
-                                        multi=True,
-                                        )
-                print "----Saving last_update_url to new URL %s"%updateurl['last_update_url']
-                return
             url = response.urljoin(href)
             print "----Processing URL = %s"%url
             yield scrapy.Request(url, callback=self.parse_link_detail)
@@ -121,7 +136,7 @@ class craigspider(BaseSpider):
                     title_status = tmp_value[0]
                 elif 'type: ' in i:
                     car_type = tmp_value[0]
-            if mileage == '' or int(mileage) < MILEAGE_MIN:
+            if mileage == '' or int(mileage) < MILEAGE_MIN or int(mileage) > MILEAGE_MAX:
                 print "----Mileage %s not within range"%mileage
                 continue
 

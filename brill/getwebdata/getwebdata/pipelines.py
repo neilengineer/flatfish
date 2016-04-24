@@ -7,6 +7,9 @@
 import pymongo
 from datetime import datetime
 from getwebdata.settings import my_mongo_uri, my_database
+#mongodb capped collection
+#db.createCollection("log", { capped: true, size: 100000 })
+#db.runCommand({"convertToCapped": "mycoll", size: 100000});
 
 class GetwebdataPipeline(object):
     collection_name = 'craig'
@@ -24,13 +27,16 @@ class GetwebdataPipeline(object):
 #            mongo_db=crawler.settings.get('MONGO_DATABASE', 'items')
         )
     def open_spider(self, spider):
-        self.client = pymongo.MongoClient(self.mongo_uri)
-        self.db = self.client[self.mongo_db]
+        if spider.debug != '1':
+            self.client = pymongo.MongoClient(self.mongo_uri)
+            self.db = self.client[self.mongo_db]
 
     def close_spider(self, spider):
-        self.client.close()
+        if spider.debug != '1':
+            self.client.close()
 
     def process_item(self, item, spider):
-        self.db[self.collection_name].insert(dict(item))
+        if spider.debug != '1':
+            self.db[self.collection_name].insert(dict(item))
         return item
 
