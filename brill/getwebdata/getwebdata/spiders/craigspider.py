@@ -1,6 +1,7 @@
 import scrapy
 import pymongo
-from scrapy.spider import BaseSpider
+from scrapy.spiders import CrawlSpider, Rule
+from scrapy.linkextractors import LinkExtractor
 from getwebdata.items import GetwebdataItem, GetwebdataCollinfo
 from getwebdata.settings import my_mongo_uri, my_database
 from datetime import datetime
@@ -17,25 +18,29 @@ MILEAGE_MIN = 5000
 MILEAGE_MAX = 150000
 
 #NOTE:
-#only supports SF bay area
 #only supports craigslist
-#date: today and yesterday
+#only supports SF bay area
+#date: show today's result only
 #price range 2000-15000
 #mileage range 5000-150000
 #year is from 2000
+#both dealer and owner
 #entries without mileage or without price will be skipped
 #TODO:
-#filter out spam info : if no year number in title skip
 #log all ops on the site: num of clicks, brand, type, price etc.
 
-class craigspider(BaseSpider):
+class craigspider(CrawlSpider):
     name = "craig"
     allowed_domains = ["craigslist.org"]
     start_urls = [
-	"https://sfbay.craigslist.org/search/cta?max_price=20000&min_price=3000&postedToday=1",
+	"https://sfbay.craigslist.org/search/cta?max_price=15000&min_price=2000&postedToday=1",
     ]
     collection_name = 'craig'
     last_update_url = ''
+#    page_num = 0
+#    total_page_num = 0
+
+    rules = (Rule(LinkExtractor(allow=(), restrict_xpaths=('//a[@class="button next"]',)), callback="parse_page", follow=True),)
 
     def __init__(self, debug='', *args, **kwargs):
         self.debug = debug
@@ -51,9 +56,16 @@ class craigspider(BaseSpider):
         else:
             print "----Dry run for debugging"
 
-    def parse(self, response):
+    def parse_page(self, response):
+#        self.page_num = self.page_num + 1
+#        if self.page_num == 1:
+#            self.total_page_num = 1 + int(response.xpath("//span[@class='totalcount']/text()").extract()[0])/100
+#        if self.page_num == self.total_page_num:
+#            return
+
         links = response.xpath("//p[@class='row']/span[@class='txt']/span[@class='pl']/a/@href").extract()
-        print "----Total number of URLs = %d on this page"%len(links)
+#        print "----Total number of URLs = %d on this page"%len(links)
+        print "----Processing page with URL = %s"%response.url
         if self.debug != '1':
             if self.last_update_url == '':
                 self.last_update_url = links[-1]
@@ -72,8 +84,8 @@ class craigspider(BaseSpider):
                         print "----Save the previous one %s"%links[i-1]
                         updateurl['last_update_url'] = links[i-1]
                     elif i == (len(links)-1):
-                        print "----last_update_url not found in the page, save the last url"
-                        updateurl['last_update_url'] = links[-1]
+                        print "----last_update_url not found in the page, save the newest url"
+                        updateurl['last_update_url'] = links[0]
                     self.db[self.collection_name].update(
                                             {'coll_name': self.collection_name},
                                             {
@@ -85,7 +97,7 @@ class craigspider(BaseSpider):
                     print "----Saving last_update_url to new URL %s"%(updateurl['last_update_url'])
                     return
             url = response.urljoin(href)
-            print "----Processing URL = %s"%url
+            print "----Processing URL on page = %s"%url
             yield scrapy.Request(url, callback=self.parse_link_detail)
 
 
