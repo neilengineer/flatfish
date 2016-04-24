@@ -25,4 +25,5 @@ class GetwebdataCar(scrapy.Item):
 class GetwebdataCollinfo(scrapy.Item):
     coll_name = scrapy.Field()
     last_update_url = scrapy.Field()
+    last_update_time = scrapy.Field()
 

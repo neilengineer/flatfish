@@ -71,10 +71,10 @@ class craigspider(CrawlSpider):
         if self.page_num == self.total_page_num:
             print "----This is the last page, stop following"
             self._follow_links = False
+        print "--Opening page%d URL = %s"%(self.page_num, response.url)
 
         links = response.xpath("//p[@class='row']/span[@class='txt']/span[@class='pl']/a/@href").extract()
-#        print "----Total number of URLs = %d on this page"%len(links)
-        print "--Opening page%d URL = %s"%(self.page_num, response.url)
+        print "----Total number of URLs = %d on this page"%len(links)
         if self.debug != '1':
             if self.last_update_url == '':
                 self.last_update_url = links[-1]
@@ -100,7 +100,7 @@ class craigspider(CrawlSpider):
                                                 multi=True,
                                                 )
                         self.last_update_url = updateurl['last_update_url']
-                        print "----Saving last_update_url to new URL %s"%(updateurl['last_update_url'])
+                        print "----i=%d,saving last_update_url to new URL %s"%(i,updateurl['last_update_url'])
                         return
             url = response.urljoin(href)
             yield scrapy.Request(url, callback=self.parse_link_detail)
@@ -108,10 +108,10 @@ class craigspider(CrawlSpider):
 
 
     def parse_link_detail(self, response):
+        self.total_processed_link_num = self.total_processed_link_num + 1
         items = []
         entries = response.xpath("//section[@class='body']")
         for a_entry in entries:
-            self.total_processed_link_num = self.total_processed_link_num + 1
             item = GetwebdataCar()
 
             tmp_title = a_entry.xpath("h2[@class='postingtitle']/span[@class='postingtitletext']")

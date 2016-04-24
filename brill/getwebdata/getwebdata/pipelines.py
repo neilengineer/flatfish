@@ -6,6 +6,7 @@
 # See: http://doc.scrapy.org/en/latest/topics/item-pipeline.html
 import pymongo
 from datetime import datetime
+from getwebdata.items import GetwebdataCollinfo
 from getwebdata.settings import my_mongo_uri, my_database
 #mongodb capped collection
 #db.createCollection("log", { capped: true, size: 100000 })
@@ -33,6 +34,17 @@ class GetwebdataPipeline(object):
 
     def close_spider(self, spider):
         if spider.debug != '1':
+            updatetime = GetwebdataCollinfo()
+            updatetime['last_update_time'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            print "----Saving last update time to = %s"%updatetime
+            self.db[self.collection_name].update(
+                                    {'coll_name': self.collection_name},
+                                    {
+                                        '$set': dict(updatetime)
+                                    },
+                                    upsert=True,
+                                    multi=True,
+                                    )
             self.client.close()
 
     def process_item(self, item, spider):
