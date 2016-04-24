@@ -1,7 +1,8 @@
 # flatfish
-flatfish is a data scientist toolbox including tools for data visualization, data cleaning, data analysis, machine learning etc.
+***flatfish* is a data scientist toolbox including tools for data collecting, data cleaning, data analysis,  data visualization, machine learning etc.**
 
-Brill   -- web scraping tool, use case: cardealmap.com
-Halibut -- data visualization tools
+Current modules available:
 
+ - Brill   -- data collecting tool e.g. web scraping
+ - Halibut -- data visualization tools (working on)
 
