@@ -59,7 +59,16 @@ class craigspider(CrawlSpider):
             print "----Dry run for debugging"
 
     def closed(self, reason):
-        print "--Spider closing, total_processed_link_num=%d, valid_link_num=%d"%(self.total_processed_link_num,self.valid_link_num)
+        cursor = self.db[self.collection_name].find({'coll_name':self.collection_name})
+        if cursor != None:
+            for document in cursor:
+                last_total_processed_link_num = document['total_processed_link_num']
+        stats_cnt = GetwebdataCollinfo()
+        stats_cnt['total_processed_link_num'] = self.total_processed_link_num + last_total_processed_link_num
+        self.db[self.collection_name].update(
+                                {'coll_name': self.collection_name},
+                                {'$set': dict(stats_cnt) },upsert=True,multi=True )
+        print "--Spider closing, total_processed_link_num=%d, valid_link_num=%d this run"%(self.total_processed_link_num,self.valid_link_num)
 
     def parse_start_url(self, response):
         return self.parse_page(response)
@@ -96,8 +105,6 @@ class craigspider(CrawlSpider):
                     print "----Saving last_update_url to new URL %s"%(updateurl['last_update_url'])
             url = response.urljoin(href)
             yield scrapy.Request(url, callback=self.parse_link_detail)
-        print "--Current num: total_processed_link_num=%d, valid_link_num=%d"%(self.total_processed_link_num,self.valid_link_num)
-
 
     def parse_link_detail(self, response):
         self.total_processed_link_num = self.total_processed_link_num + 1

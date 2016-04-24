@@ -26,4 +26,5 @@ class GetwebdataCollinfo(scrapy.Item):
     coll_name = scrapy.Field()
     last_update_url = scrapy.Field()
     last_update_time = scrapy.Field()
+    total_processed_link_num = scrapy.Field()
 
