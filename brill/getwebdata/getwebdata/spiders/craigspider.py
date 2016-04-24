@@ -39,6 +39,8 @@ class craigspider(CrawlSpider):
     last_update_url = ''
 #    page_num = 0
 #    total_page_num = 0
+    total_processed_link_num = 0
+    valid_link_num = 0
 
     rules = (Rule(LinkExtractor(allow=(), restrict_xpaths=('//a[@class="button next"]',)), callback="parse_page", follow=True),)
 
@@ -55,6 +57,12 @@ class craigspider(CrawlSpider):
                     print "----Got last update url = %s"%self.last_update_url
         else:
             print "----Dry run for debugging"
+
+    def closed(self, reason):
+        print "----total_processed_link_num=%d, valid_link_num=%d"%(self.total_processed_link_num,self.valid_link_num)
+
+    def parse_start_url(self, response):
+        return self.parse_page(response)
 
     def parse_page(self, response):
 #        self.page_num = self.page_num + 1
@@ -75,6 +83,7 @@ class craigspider(CrawlSpider):
                 if href == self.last_update_url or i == (len(links)-1):
                     if i == 0:
                         print "----No new entries found, return..."
+                        self._follow_links = False
                         return
                     #save the last URL before current one
                     updateurl = GetwebdataCollinfo()
@@ -86,6 +95,7 @@ class craigspider(CrawlSpider):
                     elif i == (len(links)-1):
                         print "----last_update_url not found in the page, save the newest url"
                         updateurl['last_update_url'] = links[0]
+                    self.last_update_url = updateurl['last_update_url']
                     self.db[self.collection_name].update(
                                             {'coll_name': self.collection_name},
                                             {
@@ -97,7 +107,6 @@ class craigspider(CrawlSpider):
                     print "----Saving last_update_url to new URL %s"%(updateurl['last_update_url'])
                     return
             url = response.urljoin(href)
-            print "----Processing URL on page = %s"%url
             yield scrapy.Request(url, callback=self.parse_link_detail)
 
 
@@ -105,6 +114,7 @@ class craigspider(CrawlSpider):
         items = []
         entries = response.xpath("//section[@class='body']")
         for a_entry in entries:
+            self.total_processed_link_num = self.total_processed_link_num + 1
             item = GetwebdataItem()
 
             tmp_title = a_entry.xpath("h2[@class='postingtitle']/span[@class='postingtitletext']")
@@ -169,5 +179,7 @@ class craigspider(CrawlSpider):
             item['date'] = date
             item['url'] = response.url
             items.append(item)
+            print "----Found valid entry at link %s on the page"%item['url']
+            self.valid_link_num = self.valid_link_num + 1
         return items
 
