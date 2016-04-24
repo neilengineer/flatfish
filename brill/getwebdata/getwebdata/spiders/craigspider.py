@@ -1,12 +1,14 @@
 import scrapy
+import pymongo
 from scrapy.spider import BaseSpider
-from getwebdata.items import GetwebdataItem
-import re
+from getwebdata.items import GetwebdataItem, GetwebdataCollinfo
+from getwebdata.settings import my_mongo_uri, my_database
 from datetime import datetime
+import re
 
 CAR_BRANDS = ["ford","chevrolet","chevy","ram","toyota","honda","nissan","hyundai","jeep","gmc", \
  "subaru","kia","bmw","lexus","infiniti","volkswagen","vw","dodge","chrysler","audi","mercedes-benz","benz",\
-"mazda","mini","buick","fiat","cadillac","jaguar","acura","volvo","mitsubishi"]
+"mazda","mini","buick","fiat","cadillac","jaguar","acura","volvo","mitsubishi","scion"]
 PRICE_MIN = 2000
 PRICE_MAX = 20000
 YEAR_MIN = '1970'
@@ -29,15 +31,48 @@ class craigspider(BaseSpider):
     start_urls = [
 	"https://sfbay.craigslist.org/search/cta?max_price=20000&min_price=3000&postedToday=1",
     ]
-    date_today = datetime.today().date()
+    collection_name = 'craig'
+    last_update_url = ''
+
+    def __init__(self, category=None, *args, **kwargs):
+        super(craigspider, self).__init__(*args, **kwargs)
+        self.client = pymongo.MongoClient(my_mongo_uri)
+        self.db = self.client[my_database]
+        cursor = self.db[self.collection_name].find({'coll_name':self.collection_name})
+        if cursor != None:
+            for document in cursor:
+                self.last_update_url = document['last_update_url']
+                print "----Got last update url = %s"%self.last_update_url
 
     def parse(self, response):
         links = response.xpath("//p[@class='row']/span[@class='txt']/span[@class='pl']/a/@href").extract()
-        print "----Total number of URLs = %d"%len(links)
-        for href in links:
+        print "----Total number of URLs = %d on this page"%len(links)
+        if self.last_update_url == '':
+            self.last_update_url = links[-1]
+            print "----Set the first threshold url %s"%self.last_update_url
+        for i,href in enumerate(links):
+            if href == self.last_update_url:
+                if i == 0:
+                    print "----No new entries found, return..."
+                    return
+                #save the last URL before current one
+                updateurl = GetwebdataCollinfo()
+                updateurl['coll_name'] = self.collection_name
+                updateurl['last_update_url'] = links[i-1]
+                self.db[self.collection_name].update(
+                                        {'coll_name': self.collection_name},
+                                        {
+                                            '$set': dict(updateurl)
+                                        },
+                                        upsert=True,
+                                        multi=True,
+                                        )
+                print "----Saving last_update_url to new URL %s"%updateurl['last_update_url']
+                return
             url = response.urljoin(href)
             print "----Processing URL = %s"%url
             yield scrapy.Request(url, callback=self.parse_link_detail)
+
 
     def parse_link_detail(self, response):
         items = []
@@ -94,13 +129,7 @@ class craigspider(BaseSpider):
             tmp_date = a_entry.xpath("section[@class='userbody']/div[@class='postinginfos']/p[@class='postinginfo reveal']/time/@datetime").extract()[0]
             tmp_date = tmp_date.replace("T"," ")
             #ignore timezone str for now
-            tmp_date = re.sub("-\d{4}","",tmp_date)
-            date_obj = datetime.strptime(tmp_date, '%Y-%m-%d %H:%M:%S')
-            if date_obj.date() == self.date_today:
-                date = tmp_date
-            else:
-                print "----Date %s not within range"%tmp_date
-                continue
+            date = re.sub("-\d{4}","",tmp_date)
 
             item['price'] = price
             item['entry_title'] = entry_title

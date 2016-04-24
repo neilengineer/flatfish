@@ -1,9 +1,9 @@
 
 
-push to github
-copy to ufindcar.com
+*)push to github
+*)copy to ufindcar.com
+*)save data into db, mongodb size limit 1G? delete obsolete data when reached limit?
 
-0)save data into db, mongodb size limit 1G? delete obsolete data when reached limit?
-1)check for new posts only  get time from titel, compare with saved last update time
+1)check for new posts only  get time from title, compare with saved last update time
 2)follow next page
 

@@ -5,8 +5,8 @@
 # Don't forget to add your pipeline to the ITEM_PIPELINES setting
 # See: http://doc.scrapy.org/en/latest/topics/item-pipeline.html
 import pymongo
-my_mongo_uri = 'localhost:27017'
-my_database = 'ufindcar'
+from datetime import datetime
+from getwebdata.settings import my_mongo_uri, my_database
 
 class GetwebdataPipeline(object):
     collection_name = 'craig'

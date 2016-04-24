@@ -19,6 +19,8 @@ class GetwebdataItem(scrapy.Item):
     url = scrapy.Field()
     place = scrapy.Field()
 
-class Getwebdata_Time(scrapy.Item):
-    last_update_time = scrapy.Field()
+#Per collection generic info
+class GetwebdataCollinfo(scrapy.Item):
+    coll_name = scrapy.Field()
+    last_update_url = scrapy.Field()
 
