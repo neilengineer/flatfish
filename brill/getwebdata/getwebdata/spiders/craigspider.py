@@ -10,7 +10,7 @@ import re
 CAR_BRANDS = ["ford","chevrolet","chevy","ram","toyota","honda","nissan","hyundai","jeep","gmc", \
  "subaru","kia","bmw","lexus","infiniti","volkswagen","vw","dodge","chrysler","audi","mercedes-benz","benz",\
 "mazda","mini","buick","fiat","cadillac","jaguar","acura","volvo","mitsubishi","scion","mercedes","mb", \
-"lincoln","saturn"]
+"lincoln","saturn","smart"]
 PRICE_MIN = 2000
 PRICE_MAX = 15000
 YEAR_MIN = '2000'
@@ -28,17 +28,18 @@ MILEAGE_MAX = 150000
 #entries without mileage or without price will be skipped
 #TODO:
 #log all ops on the site: num of clicks, brand, type, price etc.
+#"https://sfbay.craigslist.org/search/cta?max_price=15000&min_price=2000&postedToday=1",
 
 class craigspider(CrawlSpider):
     name = "craig"
     allowed_domains = ["craigslist.org"]
     start_urls = [
-	"https://sfbay.craigslist.org/search/cta?max_price=15000&min_price=2000&postedToday=1",
+    "https://sfbay.craigslist.org/search/cta?postedToday=1&min_price=2000&max_price=15000&min_auto_year=2000&min_auto_miles=5000&max_auto_miles=150000",
     ]
     collection_name = 'craig'
     last_update_url = ''
     page_num = 0
-    total_page_num = 0
+    total_page_num = 5
     total_processed_link_num = 0
     valid_link_num = 0
 
@@ -66,8 +67,8 @@ class craigspider(CrawlSpider):
 
     def parse_page(self, response):
         self.page_num = self.page_num + 1
-        if self.page_num == 1:
-            self.total_page_num = 1 + int(response.xpath("//span[@class='totalcount']/text()").extract()[0])/100
+#        if self.page_num == 1:
+#            self.total_page_num = 1 + int(response.xpath("//span[@class='totalcount']/text()").extract()[0])/100
         if self.page_num == self.total_page_num:
             print "----This is the last page, stop following"
             self._follow_links = False
@@ -104,7 +105,7 @@ class craigspider(CrawlSpider):
                         return
             url = response.urljoin(href)
             yield scrapy.Request(url, callback=self.parse_link_detail)
-        print "--For this page: total_processed_link_num=%d, valid_link_num=%d"%(self.total_processed_link_num,self.valid_link_num)
+        print "--Current num: total_processed_link_num=%d, valid_link_num=%d"%(self.total_processed_link_num,self.valid_link_num)
 
 
     def parse_link_detail(self, response):

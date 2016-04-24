@@ -1,6 +1,4 @@
 
-*)follow next page
-*)push to github
 *)copy to ufindcar.com
 *)capped collection size limit to 900MB
 
