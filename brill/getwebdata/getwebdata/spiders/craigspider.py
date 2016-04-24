@@ -121,8 +121,8 @@ class craigspider(CrawlSpider):
 
             tmp_title = a_entry.xpath("h2[@class='postingtitle']/span[@class='postingtitletext']")
             #price
-            price = tmp_title.xpath("span[@class='price']/text()").extract()[0].replace("$","")
-            if int(price) < PRICE_MIN or int(price) > PRICE_MAX:
+            price = int(tmp_title.xpath("span[@class='price']/text()").extract()[0].replace("$",""))
+            if price < PRICE_MIN or price > PRICE_MAX:
                 print "----Price %s is not within valid range, skip... "%price
                 continue
             #place
@@ -151,7 +151,7 @@ class craigspider(CrawlSpider):
                 print "----Brand not found in %s, skip brand"%brand_str
 
             #mileage, vin, title_status, car_type
-            mileage = ''
+            mileage = 0
             vin = ''
             title_status = ''
             car_type = ''
@@ -159,14 +159,14 @@ class craigspider(CrawlSpider):
                 tmp_value = re.findall(r"<b>(.*?)</b>",i)
                 if 'odometer: ' in i:
                     #mileage
-                    mileage = tmp_value[0]
+                    mileage = int(tmp_value[0])
                 elif 'VIN: ' in i:
                     vin = tmp_value[0]
                 elif 'title status: ' in i:
                     title_status = tmp_value[0]
                 elif 'type: ' in i:
                     car_type = tmp_value[0]
-            if mileage == '' or int(mileage) < MILEAGE_MIN or int(mileage) > MILEAGE_MAX:
+            if mileage == 0 or mileage < MILEAGE_MIN or mileage > MILEAGE_MAX:
                 print "----Mileage %s not within range"%mileage
                 continue
 
