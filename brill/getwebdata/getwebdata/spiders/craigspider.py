@@ -2,15 +2,14 @@ import scrapy
 import pymongo
 from scrapy.spiders import CrawlSpider, Rule
 from scrapy.linkextractors import LinkExtractor
-from getwebdata.items import GetwebdataItem, GetwebdataCollinfo
+from getwebdata.items import GetwebdataCar, GetwebdataCollinfo
 from getwebdata.settings import my_mongo_uri, my_database
 from datetime import datetime
 import re
 
 CAR_BRANDS = ["ford","chevrolet","chevy","ram","toyota","honda","nissan","hyundai","jeep","gmc", \
  "subaru","kia","bmw","lexus","infiniti","volkswagen","vw","dodge","chrysler","audi","mercedes-benz","benz",\
-"mazda","mini","buick","fiat","cadillac","jaguar","acura","volvo","mitsubishi","scion","mercedes","mb", \
-"lincoln","saturn","smart"]
+"mazda","mini","buick","fiat","cadillac","jaguar","acura","volvo","scion","mercedes","mb"]
 PRICE_MIN = 2000
 PRICE_MAX = 15000
 YEAR_MIN = '2000'
@@ -39,7 +38,7 @@ class craigspider(CrawlSpider):
     collection_name = 'craig'
     last_update_url = ''
     page_num = 0
-    total_page_num = 5
+    total_page_num = 0
     total_processed_link_num = 0
     valid_link_num = 0
 
@@ -67,8 +66,8 @@ class craigspider(CrawlSpider):
 
     def parse_page(self, response):
         self.page_num = self.page_num + 1
-#        if self.page_num == 1:
-#            self.total_page_num = 1 + int(response.xpath("//span[@class='totalcount']/text()").extract()[0])/100
+        if self.page_num == 1:
+            self.total_page_num = 1 + int(response.xpath("//span[@class='totalcount']/text()").extract()[0])/100
         if self.page_num == self.total_page_num:
             print "----This is the last page, stop following"
             self._follow_links = False
@@ -113,7 +112,7 @@ class craigspider(CrawlSpider):
         entries = response.xpath("//section[@class='body']")
         for a_entry in entries:
             self.total_processed_link_num = self.total_processed_link_num + 1
-            item = GetwebdataItem()
+            item = GetwebdataCar()
 
             tmp_title = a_entry.xpath("h2[@class='postingtitle']/span[@class='postingtitletext']")
             #price
@@ -121,6 +120,8 @@ class craigspider(CrawlSpider):
             if int(price) < PRICE_MIN or int(price) > PRICE_MAX:
                 print "----Price %s is not within valid range, skip... "%price
                 continue
+            #place
+            place = tmp_title.xpath("small/text()").extract()[0].strip().replace("(","").replace(")","")
 
             tmp_attrs = a_entry.xpath("section[@class='userbody']/div[@class='mapAndAttrs']/p[@class='attrgroup']/span")
             #entry title string
@@ -138,8 +139,8 @@ class craigspider(CrawlSpider):
                     brand = b
                     break
             if brand == '':
-                print "----Brand not found in %s"%brand_str
-                continue
+                print "----Brand not found in %s, skip brand"%brand_str
+
             #mileage, vin, title_status, car_type
             mileage = ''
             vin = ''
@@ -175,9 +176,10 @@ class craigspider(CrawlSpider):
             item['title_status'] = title_status
             item['car_type'] = car_type
             item['date'] = date
+            item['url'] = place
             item['url'] = response.url
             items.append(item)
-            print "----Found valid entry at link %s"%item['url']
             self.valid_link_num = self.valid_link_num + 1
+            print "----Found valid entry at link %s"%item['url']
         return items
 
