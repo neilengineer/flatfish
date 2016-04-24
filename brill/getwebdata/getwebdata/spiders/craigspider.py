@@ -6,6 +6,7 @@ from getwebdata.items import GetwebdataCar, GetwebdataCollinfo
 from getwebdata.settings import my_mongo_uri, my_database
 from datetime import datetime
 import re
+from time import sleep
 
 CAR_BRANDS = ["ford","chevrolet","chevy","ram","toyota","honda","nissan","hyundai","jeep","gmc", \
  "subaru","kia","bmw","lexus","infiniti","volkswagen","vw","dodge","chrysler","audi","mercedes-benz","benz",\
@@ -59,10 +60,12 @@ class craigspider(CrawlSpider):
             print "----Dry run for debugging"
 
     def closed(self, reason):
+        last_total_processed_link_num = 0
         cursor = self.db[self.collection_name].find({'coll_name':self.collection_name})
         if cursor != None:
             for document in cursor:
-                last_total_processed_link_num = document['total_processed_link_num']
+                if 'total_processed_link_num' in document.keys():
+                    last_total_processed_link_num = document['total_processed_link_num']
         stats_cnt = GetwebdataCollinfo()
         stats_cnt['total_processed_link_num'] = self.total_processed_link_num + last_total_processed_link_num
         self.db[self.collection_name].update(
@@ -94,7 +97,7 @@ class craigspider(CrawlSpider):
                     print "----Last update URL found on this page at link%d, stop following next pages"%i
                     self._follow_links = False
                     break
-                #Always save the newest link on the 1st page once
+                #Always save the 1st link on the 1st page once
                 if self.page_num == 1 and i == 0:
                     updateurl = GetwebdataCollinfo()
                     updateurl['coll_name'] = self.collection_name
@@ -104,9 +107,12 @@ class craigspider(CrawlSpider):
                                             {'$set': dict(updateurl) },upsert=True,multi=True )
                     print "----Saving last_update_url to new URL %s"%(updateurl['last_update_url'])
             url = response.urljoin(href)
+#            print "************Sending http request to %s"%url
+            sleep(0.5)  #sleep 0.5s between HTTP request
             yield scrapy.Request(url, callback=self.parse_link_detail)
 
     def parse_link_detail(self, response):
+#        print "***********parse_link_detail() for  %s"%response.url
         self.total_processed_link_num = self.total_processed_link_num + 1
         items = []
         entries = response.xpath("//section[@class='body']")
@@ -120,7 +126,11 @@ class craigspider(CrawlSpider):
                 print "----Price %s is not within valid range, skip... "%price
                 continue
             #place
-            place = tmp_title.xpath("small/text()").extract()[0].strip().replace("(","").replace(")","")
+            place = tmp_title.xpath("small/text()").extract()
+            if place != []:
+                place = place[0].strip().replace("(","").replace(")","")
+            else:
+                place = ''
 
             tmp_attrs = a_entry.xpath("section[@class='userbody']/div[@class='mapAndAttrs']/p[@class='attrgroup']/span")
             #entry title string
